@@ -1,0 +1,181 @@
+
+import numpy as np  # noqa
+import pandas as pd  # noqa
+from pandas import DataFrame
+
+
+import talib.abstract as ta
+import freqtrade.vendor.qtpylib.indicators as qtpylib
+
+from freqtrade.strategy import (
+    IStrategy,
+    Trade,
+    Order,
+    PairLocks,
+    informative,  # @informative decorator
+    # Hyperopt Parameters
+    BooleanParameter,
+    CategoricalParameter,
+    DecimalParameter,
+    IntParameter,
+    RealParameter,
+    # timeframe helpers
+    timeframe_to_minutes,
+    timeframe_to_next_date,
+    timeframe_to_prev_date,
+    # Strategy helper functions
+    merge_informative_pair,
+    stoploss_from_absolute,
+    stoploss_from_open,
+    AnnotationType,
+)
+
+
+class bernard01(IStrategy):
+
+    timeframe = '5m'
+
+    process_only_new_candles = False
+
+    use_sell_signal = True
+    sell_profit_only = False
+    ignore_roi_if_buy_signal = False
+
+    startup_candle_count: int = 20
+
+    
+    order_types = {
+        "entry": "limit",
+        "exit": "limit",
+        "stoploss": "market",
+        "stoploss_on_exchange": False
+    }
+
+    # Optional order time in force.
+    order_time_in_force = {
+        "entry": "GTC",
+        "exit": "GTC"
+    }
+
+    # set the initial stoploss to -10%
+    stoploss = -0.10
+
+    # exit profitable positions at any time when the profit is greater than 1%
+    minimal_roi = {
+        "60": 0.01,
+        "30": 0.02,
+        "0": 0.04
+    }
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
+        dataframe['ema8'] = ta.EMA(dataframe, timeperiod=8)
+        dataframe['ema21'] = ta.EMA(dataframe, timeperiod=21)
+
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
+        dataframe.loc[
+            (dataframe['ema8'].crossed_above(dataframe['ema21'])),
+            'enter_long'] = 1
+        
+      
+        return dataframe
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+
+        dataframe.loc[
+            (dataframe['ema21'].crossed_above(dataframe['ema8'])),
+            'exit_long'] = 1
+
+        return dataframe
+
+   
+   
+    INTERFACE_VERSION = 2
+
+   
+    minimal_roi = {
+        "60": 0.01,
+        "30": 0.02,
+        "0": 0.04
+    }
+
+   
+    stoploss = -0.10
+
+    trailing_stop = False
+
+    timeframe = '5m'
+
+    process_only_new_candles = False
+
+    use_sell_signal = True
+    sell_profit_only = False
+    ignore_roi_if_buy_signal = False
+
+    startup_candle_count: int = 20
+
+    order_types = {
+        'buy': 'limit',
+        'sell': 'limit',
+        'stoploss': 'market',
+        'stoploss_on_exchange': False
+    }
+
+    # Optional order time in force.
+    order_time_in_force = {
+        'buy': 'gtc',
+        'sell': 'gtc'
+    }
+
+    plot_config = {
+        # Main plot indicators (Moving averages, ...)
+        'main_plot': {
+            'ema10': {'color': 'red'},
+            'ema100': {'color': 'green'},
+            'ema1000': {'color': 'blue'},
+        },
+        'subplots': {
+            # Subplots - each dict defines one additional plot
+            "MACD": {
+                'macd': {'color': 'blue'},
+                'macdsignal': {'color': 'orange'},
+            },
+            "RSI": {
+                'rsi': {'color': 'red'},
+            }
+        }
+    }
+    def informative_pairs(self):
+       
+        return []
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+       
+
+        dataframe['ema10'] = ta.EMA(dataframe, timeperiod=10)
+        dataframe['ema100'] = ta.EMA(dataframe, timeperiod=100)
+        dataframe['ema1000'] = ta.EMA(dataframe, timeperiod=1000)
+
+        return dataframe
+
+    def populate_buy_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+       
+        dataframe.loc[
+            (
+                dataframe['ema10'].crossed_above(dataframe['ema100'])
+            ),
+            'buy'] = 1
+
+        return dataframe
+
+    def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+       
+        dataframe.loc[
+            (
+                dataframe['ema100'].crossed_above(dataframe['ema10'])
+            ),
+            'sell'] = 1
+        return dataframe
